@@ -47,7 +47,7 @@ class MetaOptimizer(nn.Module):
             self.hx = []
             self.cx = []
             for i in range(len(self.lstms)):
-                self.hx.append(Variable(torch.zeros(1, self.hidden_size)))
+                self.hx.append(Variable(t,orch.zeros(1, self.hidden_size)))
                 self.cx.append(Variable(torch.zeros(1, self.hidden_size)))
                 if use_cuda:
                     self.hx[i], self.cx[i] = self.hx[i].cuda(), self.cx[i].cuda()
@@ -72,6 +72,7 @@ class MetaOptimizer(nn.Module):
         grads = []
 
         for module in model_with_grads.children():
+            
             grads.append(module._parameters['weight'].grad.data.view(-1))
             grads.append(module._parameters['bias'].grad.data.view(-1))
 
@@ -105,6 +106,7 @@ class FastMetaOptimizer(nn.Module):
 
     def reset_lstm(self, keep_states=False, model=None, use_cuda=False):
         self.meta_model.reset()
+        #self.meta_model.apply(weight_reset)
         self.meta_model.copy_params_from(model)
 
         if keep_states:
@@ -122,9 +124,10 @@ class FastMetaOptimizer(nn.Module):
         grads = []
 
         for module in model_with_grads.children():
-            grads.append(module._parameters['weight'].grad.data.view(-1).unsqueeze(-1))
-            grads.append(module._parameters['bias'].grad.data.view(-1).unsqueeze(-1))
+                grads.append(module._parameters['weight'].grad.data.view(-1).unsqueeze(-1))
+                grads.append(module._parameters['bias'].grad.data.view(-1).unsqueeze(-1))
 
+                                            
         flat_params = self.meta_model.get_flat_params().unsqueeze(-1)
         flat_grads = torch.cat(grads)
 
@@ -144,6 +147,9 @@ class FastMetaOptimizer(nn.Module):
 
         # Finally, copy values from the meta model to the normal one.
         self.meta_model.copy_params_to(model_with_grads)
+        
+        del flat_params, inputs, loss, flat_grads
+        
         return self.meta_model.model
 
 # A helper class that keeps track of meta updates
